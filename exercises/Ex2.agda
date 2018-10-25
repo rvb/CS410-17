@@ -42,11 +42,11 @@ OPE = record
   { Obj          = Nat    -- ...has numbers as objects...
   ; _~>_         = _<=_   -- ...and "thinnings" as arrows.
                           -- Now, assemble the rest of the components.
-  ; id~>         = {!!}
-  ; _>~>_        = {!!}
-  ; law-id~>>~>  = {!!}
-  ; law->~>id~>  = {!!}
-  ; law->~>>~>   = {!!}
+  ; id~>         = oi
+  ; _>~>_        = _o>>_
+  ; law-id~>>~>  = idThen-o>>
+  ; law->~>id~>  = idAfter-o>>
+  ; law->~>>~>   = assoc-o>>
   }
 
 VEC : Nat -> SET => SET                -- Vectors of length n...
@@ -54,8 +54,8 @@ VEC n = record
   { F-Obj       = \ X -> Vec X n       -- ...give a functor from SET to SET...
   ; F-map       = \ f xs -> vMap f xs  -- ...doing vMap to arrows.
                                        -- Now prove the laws.
-  ; F-map-id~>  = extensionality \ xs -> {!!}
-  ; F-map->~>   = \ f g -> extensionality \ xs -> {!!}
+  ; F-map-id~>  = extensionality \ xs -> vMapIdFact refl xs
+  ; F-map->~>   = \ f g -> extensionality \ xs -> sym (vMapCpFact (λ x → refl (g (f x))) xs)
   }
 
 Op : Category -> Category             -- Every category has an opposite...
@@ -63,19 +63,19 @@ Op C = record
   { Obj          = Obj                -- ...with the same objects, but...  
   ; _~>_         = \ S T -> T ~> S    -- ...arrows that go backwards!
                                       -- Now, find the rest!
-  ; id~>         = {!!}
-  ; _>~>_        = {!!}
-  ; law-id~>>~>  = {!!}
-  ; law->~>id~>  = {!!}
-  ; law->~>>~>   = {!!}
+  ; id~>         = id~>
+  ; _>~>_        = λ f g → g >~> f
+  ; law-id~>>~>  = law->~>id~>
+  ; law->~>id~>  = law-id~>>~>
+  ; law->~>>~>   = λ f g h → sym (law->~>>~> h g f)
   } where open Category C
 
 CHOOSE : Set -> OPE => Op SET    -- Show that thinnings from n to m...
 CHOOSE X = record                -- ...act by selection...
   { F-Obj       = Vec X          -- ...to cut vectors down from m to n.
-  ; F-map       = {!!}
-  ; F-map-id~>  = extensionality {!!}
-  ; F-map->~>   = \ f g -> extensionality {!!}
+  ; F-map       = _<?=_
+  ; F-map-id~>  = extensionality id-<?=
+  ; F-map->~>   = \ f g -> extensionality (cp-<?= f g)
   }
 
 --??--------------------------------------------------------------------------
@@ -108,14 +108,21 @@ LIST-MONOID : Set -> Category
 LIST-MONOID X =            -- Show that _+L_ is the operation of a monoid,...
   record
   { Obj          = One     -- ... i.e., a category with one object.
-  ; _~>_         = {!!}
-  ; id~>         = {!!}
-  ; _>~>_        = {!!}
-  ; law-id~>>~>  = {!!}
-  ; law->~>id~>  = {!!}
-  ; law->~>>~>   = {!!}
+  ; _~>_         = λ _ _ → List X
+  ; id~>         = []
+  ; _>~>_        = _+L_
+  ; law-id~>>~>  = refl
+  ; law->~>id~>  = idRNeutral 
+  ; law->~>>~>   = assoc
   } where
-  -- useful helper proofs (lemmas) go here
+    idRNeutral : ∀ {X} (f : List X) → (f +L []) == f
+    idRNeutral [] = refl []
+    idRNeutral (x ,- f) rewrite idRNeutral f = refl (x ,- f)
+
+    assoc : ∀ {X} (f g h : List X) →
+        ((f +L g) +L h) == (f +L g +L h)
+    assoc [] g h = refl (g +L h)
+    assoc (x ,- f) g h rewrite assoc f g h = refl (x ,- f +L g +L h)
 
 --??--------------------------------------------------------------------------
 
@@ -126,16 +133,24 @@ LIST-MONOID X =            -- Show that _+L_ is the operation of a monoid,...
 --??--2.3-(3)-----------------------------------------------------------------
 
 list : {X Y : Set} -> (X -> Y) -> List X -> List Y
-list f xs = {!!}
+list f [] = []
+list f (x ,- xs) = f x ,- list f xs
 
 LIST : SET => SET
 LIST = record
   { F-Obj       = List
   ; F-map       = list
-  ; F-map-id~>  = extensionality {!!}
-  ; F-map->~>   = \ f g -> extensionality {!!}
+  ; F-map-id~>  = extensionality identity
+  ; F-map->~>   = \ f g -> extensionality (composition f g)
   } where
-  -- useful helper proofs (lemmas) go here
+    identity : ∀ {T} (x : List T) → list id x == x
+    identity [] = refl []
+    identity (x ,- xs) rewrite identity xs = refl (x ,- xs)
+    
+    composition : ∀ {R S T} (f : R → S) (g : S → T) (x : List R) →
+              list (f >> g) x == list g (list f x)
+    composition f g [] = refl []
+    composition f g (x ,- xs) rewrite composition f g xs = refl (g (f x) ,- list g (list f xs))
 
 --??--------------------------------------------------------------------------
 
@@ -144,15 +159,17 @@ LIST = record
 
 --??--2.4-(3)-----------------------------------------------------------------
 
+appendNaturality : ∀ {X Y} (f : X → Y) (xs ys : List X) → list f (xs +L ys) == (list f xs +L list f ys)
+appendNaturality f [] ys = refl _
+appendNaturality f (x ,- xs) ys rewrite appendNaturality f xs ys = refl (f x ,- list f xs +L list f ys)
+    
 LIST+L : {X Y : Set}(f : X -> Y) -> LIST-MONOID X => LIST-MONOID Y
 LIST+L {X}{Y} f = record
   { F-Obj       = id
   ; F-map       = list f -- this yellow will go once LIST-MONOID has arrows!
-  ; F-map-id~>  = {!!}
-  ; F-map->~>   = {!!}
-  } where
-  -- useful helper proofs (lemmas) go here
-
+  ; F-map-id~>  = λ {T} → refl []
+  ; F-map->~>   = appendNaturality f
+  }
 
 --??--------------------------------------------------------------------------
 
@@ -164,7 +181,7 @@ LIST+L {X}{Y} f = record
 SINGLE : ID ~~> LIST
 SINGLE = record
   { xf          = \ x -> x ,- []      -- turn a value into a singleton list
-  ; naturality  = \ f -> {!!}
+  ; naturality  = \ f -> refl _
   }
 
 --??--------------------------------------------------------------------------
@@ -182,14 +199,17 @@ SINGLE = record
 --??--2.6-(3)-----------------------------------------------------------------
 
 concat : {X : Set} -> List (List X) -> List X
-concat xss = {!!}
+concat [] = []
+concat (xs ,- xss) = xs +L concat xss
 
 CONCAT : (LIST >=> LIST) ~~> LIST
 CONCAT = record
   { xf          = concat
-  ; naturality  = {!!}
+  ; naturality  = λ f → extensionality (naturalityRec f)
   } where
-  -- useful helper proofs (lemmas) go here
+    naturalityRec : ∀ {X Y} (f : X → Y) (x : List (List X)) → concat (list (list f) x) == list f (concat x)
+    naturalityRec f [] = refl []
+    naturalityRec f (xs ,- xss) rewrite appendNaturality f xs (concat xss) | naturalityRec f xss = refl (list f xs +L list f (concat xss))
 
 --??--------------------------------------------------------------------------
 
@@ -200,16 +220,30 @@ CONCAT = record
 --??--2.7-(4)-----------------------------------------------------------------
 
 module LIST-MONAD where
+  open Category
   open MONAD LIST public
   ListMonad : Monad
   ListMonad = record
     { unit      = SINGLE
     ; mult      = CONCAT
-    ; unitMult  = {!!}
-    ; multUnit  = {!!}
-    ; multMult  = {!!}
+    ; unitMult  = extensionality unitMultHelper
+    ; multUnit  = extensionality multUnitHelper
+    ; multMult  = extensionality multMultHelper
     } where
-    -- useful helper proofs (lemmas) go here
+      unitMultHelper : ∀ {X} (x : List X) → (x +L []) == x
+      unitMultHelper {X} = law->~>id~> (LIST-MONOID X)
+
+      multUnitHelper : ∀ {X} (x : List X) → concat (list (λ y → y ,- []) x) == x
+      multUnitHelper [] = refl []
+      multUnitHelper (x ,- xs) rewrite multUnitHelper xs = refl (x ,- xs)
+
+      concatDistrib : ∀ {X} (x y : List (List X)) → concat (x +L y) == (concat x +L concat y)
+      concatDistrib [] y = refl (concat y)
+      concatDistrib {X} (x ,- xs) y rewrite concatDistrib xs y = sym (law->~>>~> (LIST-MONOID X) x (concat xs) (concat y))
+
+      multMultHelper : ∀ {X} (x : List (List (List X))) → concat (concat x) == concat (list concat x)
+      multMultHelper [] = refl []
+      multMultHelper (xss ,- xsss) rewrite concatDistrib xss (concat xsss) | multMultHelper xsss = refl (concat xss +L concat (list concat xsss))
 
 -- open LIST-MONAD
 
