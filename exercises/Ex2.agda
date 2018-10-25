@@ -335,16 +335,24 @@ VecCopy X n = All (\ _ -> X) (copy n)
 
 all : {X : Set}{S T : X -> Set} ->
       [ S -:> T ] -> [ All S -:> All T ]
-all f xs ss = {!!}
+all f [] ss = <>
+all f (x ,- xs) (s , ss) = (f x s) , (all f xs ss)
 
 ALL : (X : Set) -> (X ->SET) => (List X ->SET)
 ALL X = record
   { F-Obj      = All
   ; F-map      = all
-  ; F-map-id~> = {!!}
-  ; F-map->~>  = {!!}
+  ; F-map-id~> = extensionality λ xs → extensionality (idHelper xs)
+  ; F-map->~>  = λ f g → extensionality λ xs → extensionality {!cmpHelper f g xs!}
   } where
-  -- useful helper facts go here
+    idHelper : ∀ {X} {T : (X -> Set)} (xs : List X) (ss : All T xs) → all (λ _ → id) xs ss == ss
+    idHelper [] <> = refl <>
+    idHelper (x ,- xs) (s , ss) rewrite idHelper xs ss = refl (s , ss)
+    
+    cmpHelper : ∀ {X} {R S T : Category.Obj (X ->SET)} (f : (i : X) → R i → S i) (g : (i : X) → S i → T i)
+      (xs : List X) (rs : All R xs) → all (λ i x₁ → g i (f i x₁)) xs rs == all g xs (all f xs rs)
+    cmpHelper f g [] <> = refl <>
+    cmpHelper f g (x ,- xs) (r , rs) rewrite cmpHelper f g xs rs = refl (g x (f x r) , all g xs (all f xs rs))
 
 --??--------------------------------------------------------------------------
 
@@ -436,13 +444,16 @@ footprints = (4 , 6 , refl 10) 8>< strVec "foot"
 CUTTING : {I O : Set}(C : I |> O) -> (I ->SET) => (O ->SET)
 CUTTING {I}{O} C = record
   { F-Obj = Cutting C
-  ; F-map = {!!}
+  ; F-map = map
   ; F-map-id~> = extensionality \ o -> extensionality \ { (c 8>< ps) ->
-     {!!} }
+     refl (_8><_ c) =$= (F-map-id~> =$ (inners c) =$ ps) }
   ; F-map->~> = \ f g ->
      extensionality \ o -> extensionality \ { (c 8>< ps) ->
-     {!!} } 
+     refl (_8><_ c) =$= (F-map->~> f g =$ inners c =$ ps) } 
   } where
+  map : ∀ {I O} {C : I |> O} {S T : I → Set} → ((i : I) → S i → T i) → (i : O) → Cutting C S i → Cutting C T i
+  map f o (cut 8>< pieces) = cut 8>< all f _ pieces
+  
   open _|>_ C
   open _=>_ (ALL I)
 
