@@ -343,7 +343,7 @@ ALL X = record
   { F-Obj      = All
   ; F-map      = all
   ; F-map-id~> = extensionality λ xs → extensionality (idHelper xs)
-  ; F-map->~>  = λ f g → extensionality λ xs → extensionality {!cmpHelper f g xs!}
+  ; F-map->~>  = λ f g → extensionality λ xs → extensionality (cmpHelper f g xs)
   } where
     idHelper : ∀ {X} {T : (X -> Set)} (xs : List X) (ss : All T xs) → all (λ _ → id) xs ss == ss
     idHelper [] <> = refl <>
@@ -554,8 +554,14 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
     allInteriorFoldLaw : (pq : [ P -:> Q ])(qalg : Algebra (CUTTING C) Q) ->
       allInteriorFold pq qalg == all (interiorFold pq qalg)
     allInteriorFoldLaw pq qalg = extensionality \ is -> extensionality \ ps ->
-      {!!}
+      helper is ps
       where
+        helper : ∀ (is : List I) (ps : All (Interior C P) is) →
+           allInteriorFold pq qalg is ps == all (interiorFold pq qalg) is ps
+        helper [] <> = refl <>
+        helper (i ,- is) (p , ps) rewrite helper is ps = refl (interiorFold pq qalg i p , all (interiorFold pq qalg) is ps)
+      
+
       -- helper lemmas go here
 
 --??--------------------------------------------------------------------------
@@ -574,7 +580,24 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
         qalg i (c 8>< all f (inners c) ps) == f i < c 8>< ps >) ->
       (i : I)(pi : Interior C P i) -> interiorFold pq qalg i pi == f i pi
 
-    interiorFoldLemma pq qalg f base step i pi = {!!}
+    interiorFoldInner :
+      (pq : [ P -:> Q ])(qalg : Algebra (CUTTING C) Q)
+      (f : [ Interior C P -:> Q ]) ->
+      ((i : I)(p : P i) -> pq i p == f i (tile p)) ->
+      ((i : I)(c : Cuts i)(ps : All (Interior C P) (inners c)) ->
+        qalg i (c 8>< all f (inners c) ps) == f i < c 8>< ps >) ->
+      (js : List I)
+      (pieces : All (Interior C P) js) ->
+      all (interiorFold pq qalg) js pieces == all f js pieces
+
+    interiorFoldLemma pq qalg f base step i (tile x) = base i x
+    interiorFoldLemma pq qalg f base step i < cut 8>< pieces >
+      rewrite allInteriorFoldLaw pq qalg
+            | interiorFoldInner pq qalg f base step (inners cut) pieces = step i cut pieces
+    interiorFoldInner pq galg f base step [] pieces = refl <>
+    interiorFoldInner pq galg f base step (j ,- js) (p , ps)
+      rewrite interiorFoldLemma pq galg f base step j p
+            | interiorFoldInner pq galg f base step js ps = refl (f j p , all f js ps)
 
 --??--------------------------------------------------------------------------
 
@@ -645,7 +668,7 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
 
   interior : {X Y : I -> Set} ->
              [ X -:> Y ] -> [ Interior C X -:> Interior C Y ]
-  interior f = {!!}
+  interior f = interiorBind (f >~> tile')
 
   -- using interiorBindFusion, prove the following law for "fold after map"
 
@@ -654,7 +677,7 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
     (interior pq >~> interiorFold qr ralg) == interiorFold (pq >~> qr) ralg
   interiorFoldFusion pq qr ralg =
     interior pq >~> interiorFold qr ralg
-      =[ {!!} >=
+      =[ interiorBindFusion (pq >~> tile') qr ralg >=
     interiorFold (pq >~> qr) ralg [QED]
     where open _=>_ (ALL I)
 
@@ -665,9 +688,19 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
   INTERIOR = record
     { F-Obj      = Interior C
     ; F-map      = interior
-    ; F-map-id~> = {!!}
-    ; F-map->~>  = {!!}
-    } where open _=>_ (ALL I)
+    ; F-map-id~> = \{T} → idPrf T
+    ; F-map->~>  = λ f g → sym $ interiorFoldFusion f (g >~> tile') cut'
+    } where
+        open _=>_ (ALL I)
+        idStep : ∀ {T : I → Set} (i : I)
+                 (c : _|>_.Cuts C i) (ps : All (Interior C T) (_|>_.inners C c)) →
+                 < c 8>< all (λ _ x → x) (_|>_.inners C c) ps > == < c 8>< ps >
+        idStep i c ps rewrite F-map-id~> =$ (inners c) =$ ps = refl < c 8>< ps >
+
+        idPrf : (T : I → Set) → interiorFold tile' cut' == (λ i x → x)
+        idPrf T = interiorFoldLaw tile' cut' (λ _ → id) (λ i p → refl (tile p)) idStep
+
+
 
 --??--------------------------------------------------------------------------
 
