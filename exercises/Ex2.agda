@@ -732,17 +732,27 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
       naturalityHelp f
         rewrite interiorBindFusion (λ _ → id) (f >~> tile') cut'
           |     interiorBindFusion (interiorFold (f >~> tile')  cut' >~> tile') (λ _ → id) cut' = refl _
-    
 
   INTERIOR-Monad : Monad
   INTERIOR-Monad = record
     { unit = WRAP
     ; mult = FLATTEN
-    ; unitMult = {!!}
-    ; multUnit = {!!}
-    ; multMult = {!!}
+    ; unitMult = refl _
+    ; multUnit = multUnitHelp
+    ; multMult = multMultHelp
     } where
-    open _=>_ INTERIOR
+    open _=>_ INTERIOR    
+    multUnitHelp : ∀ {X : I → Set} →
+               (interior (xf WRAP {X}) >~> xf FLATTEN) == id~>
+    multUnitHelp {X} rewrite interiorFoldFusion tile' (λ _ → id) (cut' {X}) = F-map-id~>
+
+    multMultHelp : ∀ {X : I → Set} →
+               (xf FLATTEN >~> xf FLATTEN {X}) == (interior (xf FLATTEN) >~> xf FLATTEN)
+    multMultHelp {X}
+      rewrite interiorFoldFusion (xf FLATTEN {X}) (λ _ → id) cut'
+        |     interiorBindFusion (λ _ → id) (λ _ → id) (cut' {X}) = refl _
+
+
 
 --??--------------------------------------------------------------------------
 
@@ -755,7 +765,7 @@ open INTERIORFOLD
 --??--2.14-(2)----------------------------------------------------------------
 
 NatCutVecAlg : {X : Set} -> Algebra (CUTTING NatCut) (Vec X)
-NatCutVecAlg n xsc = {!!}
+NatCutVecAlg n (m , m' , prf 8>< xs , xs' , <>) rewrite sym prf = xs +V xs'
 
 --??--------------------------------------------------------------------------
 
@@ -781,7 +791,8 @@ module CHOICE where
 
   _+C_ : {I J : Set} ->  I |> I ->  J |> J  ->  (I * J) |> (I * J)
   Cuts   (P +C Q) (i , j) = Cuts P i + Cuts Q j
-  inners (P +C Q) = {!!}
+  inners (P +C Q) {i , j} (inl x) = list (_, j) (inners P x)
+  inners (P +C Q) {i , j} (inr x) = list (_,_ i) (inners Q x)
 
 --??--------------------------------------------------------------------------
 
