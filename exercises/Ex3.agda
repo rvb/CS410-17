@@ -40,7 +40,9 @@ data _<[_]>_ {X : Set} : List X -> List X -> List X -> Set where
 _>[_]<_ : {X : Set}{ls ms rs : List X} -> {P : X -> Set} ->
           All P ls -> ls <[ ms ]> rs -> All P rs ->
           All P ms
-pl >[ s ]< pr = {!!}
+pl >[ sz ]< pr = <>
+(pl , pls) >[ sl s ]< pr = pl , (pls >[ s ]< pr)
+pl >[ sr s ]< (pr , prs) = pr , (pl >[ s ]< prs)
 
 -- Now, buikd the view that shows riffling can be inverted, using a splitting
 -- as the instructions to discover how to split an All in two.
@@ -51,7 +53,11 @@ data IsRiffle {X : Set}{ls ms rs : List X}(s : ls <[ ms ]> rs){P : X -> Set}
   
 isRiffle : {X : Set}{ls ms rs : List X}(s : ls <[ ms ]> rs)
            {P : X -> Set}(pm : All P ms) -> IsRiffle s pm
-isRiffle s pm = {!!}
+isRiffle sz <> = mkRiffle <> <>
+isRiffle (sl s) (l , pm) with isRiffle s pm
+isRiffle (sl s) (l , .(pl >[ s ]< pr)) | mkRiffle pl pr = mkRiffle (l , pl) pr
+isRiffle (sr s) (r , pm) with isRiffle s pm
+isRiffle (sr s) (r , .(pl >[ s ]< pr)) | mkRiffle pl pr = mkRiffle pl (r , pr)
 
 --??--------------------------------------------------------------------------
 
@@ -61,7 +67,8 @@ isRiffle s pm = {!!}
 -- Construct the "all on the right" splitting.
 
 srs : forall {X : Set}{xs : List X} -> [] <[ xs ]> xs
-srs = {!!}
+srs {xs = []} = sz
+srs {xs = x ,- xs} = sr srs
 
 -- Construct a view to show that any "none on the left" splitting is
 -- "all on the right". Come up with the type yourself.
@@ -70,7 +77,8 @@ srs = {!!}
 -- Construct the splitting that corresponds to concatenation.
 
 slrs : forall {X : Set}(xs ys : List X) -> xs <[ xs +L ys ]> ys
-slrs xs ys = {!!}
+slrs [] ys = srs
+slrs (x ,- xs) ys = sl (slrs xs ys)
 
 --??--------------------------------------------------------------------------
 
@@ -96,6 +104,19 @@ slrs xs ys = {!!}
 --            ??          rrs
 --         <[    ]>
 --      ls          lrs
+
+rotate : ∀ {X} {ls ms rs lrs rrs : List X} → ls <[ ms ]> rs → lrs <[ rs ]> rrs → Sg (List X) λ xs → (ls <[ xs ]> lrs) * (xs <[ ms ]> rrs)
+rotate sz sz = [] , (sz , sz)
+rotate (sl s1) s2 with rotate s1 s2
+rotate (sl s1) s2 | xs , s1' , s2' = (_ ,- xs) , ((sl s1') , (sl s2'))
+rotate (sr s1) (sl s2) with rotate s1 s2
+rotate (sr s1) (sl s2) | xs , s1' , s2' = (_ ,- xs) , ((sr s1') , (sl s2'))
+rotate (sr s1) (sr s2) with rotate s1 s2
+rotate (sr s1) (sr s2) | xs , s1' , s2' = xs , (s1' , sr s2')
+
+nilSplitUnique : ∀ {X} {ms xs : List X} → [] <[ ms ]> xs → ms == xs
+nilSplitUnique sz = refl []
+nilSplitUnique (sr l) rewrite nilSplitUnique l = refl _
 
 -- HINT: Sg is your friend
 
@@ -128,7 +149,8 @@ data _~_ {X : Set} : List X -> List X -> Set where
 -- Show that every list is a permutation of itself.
 
 reflP : {X : Set}{xs : List X} -> xs ~ xs
-reflP = {!!}
+reflP {xs = []} = []
+reflP {xs = x ,- xs} = (sl srs) ,- reflP
 
 --??--------------------------------------------------------------------------
 
@@ -136,13 +158,14 @@ reflP = {!!}
 --??--3.5-(5)-----------------------------------------------------------------
 
 -- Construct an "unbiased" insertion operator which lets you grow a
--- permutation by inserting a new element anywhere, left and right
+-- permutation by inserting a new element anywhere, left and 
 
 insP : forall {X : Set}{z : X}{xs xs' ys ys'} ->
          (z ,- []) <[ xs' ]> xs ->
          (z ,- []) <[ ys' ]> ys ->
          xs ~ ys -> xs' ~ ys'
-insP l r p = {!!}
+insP (sl l) r p rewrite nilSplitUnique l = r ,- p
+insP (sr l) r p = {!p!}
 
 -- Now show that, given a permutation, and any element on the left,
 -- you can find out where it ended up on the right, and why the
