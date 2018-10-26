@@ -842,7 +842,7 @@ rectangle = < inr (4 , 2 , refl _)
 
 vecAll : {I : Set}{P : I -> Set}{is : List I}{n : Nat} ->
          All (\ i -> Vec (P i) n) is -> Vec (All P is) n
-vecAll {is = is} pss = {!!}
+vecAll {is = is} pss = vTabulate λ x → all (λ i xs → vProject xs x) is pss
 
 -- Given vecAll, show that algebra for any cutting can be lifted
 -- to an algebra on vectors.
@@ -850,15 +850,15 @@ vecAll {is = is} pss = {!!}
 VecLiftAlg : {I : Set}(C : I |> I){X : I -> Set}
              (alg : Algebra (CUTTING C) X){n : Nat} ->
              Algebra (CUTTING C) (\ i -> Vec (X i) n)
-VecLiftAlg C alg i (c 8>< pss) = {!!}
+VecLiftAlg C alg i (c 8>< pss) = vec (λ x → alg i (c 8>< x)) (vecAll pss)
 
 -- Now show that you can build an algebra for matrices
 -- which handles cuts in either dimension,
 -- combining them either horizontally or vertically!
 
 NatCut2DMatAlg : {X : Set} -> Algebra (CUTTING NatCut2D) (Matrix X)
-NatCut2DMatAlg _ (inl c 8>< ms) = {!!}
-NatCut2DMatAlg _ (inr c 8>< ms) = {!!}
+NatCut2DMatAlg _ (inl (m , n , prf) 8>< xs , xs' , <>) rewrite sym prf = vec (λ {(x , y) → x +V y}) (vZip xs xs')
+NatCut2DMatAlg _ (inr (m , n , prf) 8>< xs , xs' , <>) rewrite sym prf = xs +V xs'
 
 --??--------------------------------------------------------------------------
 
@@ -871,4 +871,3 @@ picture = interiorFold (\ _ -> id) NatCut2DMatAlg
 -- sensible:
 
 test2 = picture _ rectangle
-
