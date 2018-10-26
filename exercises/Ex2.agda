@@ -714,16 +714,25 @@ module INTERIOR {I : Set}{C : I |> I} where  -- fix some C...
 
   WRAP : ID ~~> INTERIOR
   WRAP = record
-    { xf         = {!!}
-    ; naturality = {!!}
+    { xf         = tile'
+    ; naturality = λ f → refl _
     }
 
   -- use interiorBind to define the following
   FLATTEN : (INTERIOR >=> INTERIOR) ~~> INTERIOR
   FLATTEN = record
-    { xf         = {!!}
-    ; naturality = {!!}
+    { xf         = interiorBind (λ _ → id)
+    ; naturality = λ f → naturalityHelp f
     }
+    where
+      naturalityHelp : ∀ {X Y : I → Set} (f : (i : I) → X i → Y i) →
+                     (λ i x →
+                       interiorBind (λ _ x₁ → x₁) i (interior (interior f) i x))
+                     == (λ i x → interior f i (interiorBind (λ _ x₁ → x₁) i x))
+      naturalityHelp f
+        rewrite interiorBindFusion (λ _ → id) (f >~> tile') cut'
+          |     interiorBindFusion (interiorFold (f >~> tile')  cut' >~> tile') (λ _ → id) cut' = refl _
+    
 
   INTERIOR-Monad : Monad
   INTERIOR-Monad = record
