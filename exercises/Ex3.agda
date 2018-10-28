@@ -192,11 +192,20 @@ insP l r p = ripplePermutation l r reflP p
 -- you can find out where it ended up on the right, and why the
 -- remaining elements form a permutation.
 
+nilSplitUnique : ∀ {X} {xs ys : List X} → [] <[ xs ]> ys → xs == ys
+nilSplitUnique sz = refl []
+nilSplitUnique (sr s) rewrite nilSplitUnique s = refl _
+
 findLonR : forall {X : Set}{z : X}{xs xs' ys'} ->
                   (z ,- []) <[ xs' ]> xs ->
                   xs' ~ ys' ->
                   Sg (List X) λ ys → xs ~ ys * (z ,- []) <[ ys' ]> ys
-findLonR s p = {!!}
+findLonR () []
+findLonR (sl s) (x ,- p) rewrite nilSplitUnique s = _ , (p , x)
+findLonR (sr s) (x ,- p) with findLonR s p
+findLonR (sr s) (x ,- p) | xs , p' , z with rotate x z
+findLonR (sr s) (x ,- p) | xs , p' , z | ys , s1 , s2 with rotate' (mirror s1) s2
+findLonR (sr s) (x ,- p) | xs , p' , z | ys , s1 , s2 | zs , s1' , s2' = zs , (s2' ,- p') , s1'
 
 -- HINT: again, you may need Sg to give a sensible return type.
 
