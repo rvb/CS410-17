@@ -114,9 +114,16 @@ rotate (sr s1) (sl s2) | xs , s1' , s2' = (_ ,- xs) , ((sr s1') , (sl s2'))
 rotate (sr s1) (sr s2) with rotate s1 s2
 rotate (sr s1) (sr s2) | xs , s1' , s2' = xs , (s1' , sr s2')
 
-nilSplitUnique : ∀ {X} {ms xs : List X} → [] <[ ms ]> xs → ms == xs
-nilSplitUnique sz = refl []
-nilSplitUnique (sr l) rewrite nilSplitUnique l = refl _
+rotate' : ∀ {X} {ls ms rs lrs rrs : List X} → ls <[ ms ]> lrs → ms <[ rs ]> rrs → Sg (List X) λ xs → (ls <[ rs ]> xs) * (lrs <[ xs ]> rrs)
+rotate' {rs = rs} sz s2 = rs , (srs , s2)
+rotate' (sl s1) (sl s2) with rotate' s1 s2
+rotate' (sl s1) (sl s2) | xs , s1' , s2' = _ , ((sl s1') , s2')
+rotate' (sl s1) (sr s2) with rotate' (sl s1) s2
+rotate' (sl s1) (sr s2) | xs , s1' , s2' = _ , ((sr s1') , (sr s2'))
+rotate' (sr s1) (sl s2) with rotate' s1 s2
+rotate' (sr s1) (sl s2) | xs , s1' , s2' = _ , ((sr s1') , (sl s2'))
+rotate' (sr s1) (sr s2) with rotate' (sr s1) s2
+rotate' (sr s1) (sr s2) | xs , s1' , s2' = _ , ((sr s1') , (sr s2'))
 
 -- HINT: Sg is your friend
 
@@ -157,15 +164,29 @@ reflP {xs = x ,- xs} = (sl srs) ,- reflP
 
 --??--3.5-(5)-----------------------------------------------------------------
 
+--Splits can be mirrored, i.e. left and right parts swapped.
+mirror : ∀ {X} {xs ys zs : List X} → xs <[ ys ]> zs → zs <[ ys ]> xs
+mirror sz = sz
+mirror (sl s) = sr (mirror s)
+mirror (sr s) = sl (mirror s)
+
+--Rippling together parts that are permutations of each other results in lists that are permutations of each other.
+ripplePermutation : ∀ {X : Set} {xs ys zs xs' ys' zs' : List X} → xs <[ ys ]> zs → xs' <[ ys' ]> zs' → xs ~ xs' → zs ~ zs' → ys ~ ys'
+ripplePermutation sz sz [] [] = []
+ripplePermutation (sl s1) s2 (x ,- px) pz with rotate' x s2
+ripplePermutation (sl s1) s2 (x ,- px) pz | qs , s2l , s2r = s2l ,- (ripplePermutation s1 s2r px pz)
+ripplePermutation (sr s1) s2 px (x ,- pz) with rotate s2 x
+ripplePermutation (sr s1) s2 px (x ,- pz) | xs , s2l , s2r with rotate' (mirror s2l) s2r
+ripplePermutation (sr s1) s2 px (x ,- pz) | xs , s2l , s2r | ys , s2l' , s2r' = s2l' ,- ripplePermutation s1 s2r' px pz
+
 -- Construct an "unbiased" insertion operator which lets you grow a
--- permutation by inserting a new element anywhere, left and 
+-- permutation by inserting a new element anywhere, left and right.
 
 insP : forall {X : Set}{z : X}{xs xs' ys ys'} ->
          (z ,- []) <[ xs' ]> xs ->
          (z ,- []) <[ ys' ]> ys ->
          xs ~ ys -> xs' ~ ys'
-insP (sl l) r p rewrite nilSplitUnique l = r ,- p
-insP (sr l) r p = {!p!}
+insP l r p = ripplePermutation l r reflP p
 
 -- Now show that, given a permutation, and any element on the left,
 -- you can find out where it ended up on the right, and why the
@@ -174,8 +195,8 @@ insP (sr l) r p = {!p!}
 findLonR : forall {X : Set}{z : X}{xs xs' ys'} ->
                   (z ,- []) <[ xs' ]> xs ->
                   xs' ~ ys' ->
-                  {!!}
-findLonR l p = {!!}
+                  Sg (List X) λ ys → xs ~ ys * (z ,- []) <[ ys' ]> ys
+findLonR s p = {!!}
 
 -- HINT: again, you may need Sg to give a sensible return type.
 
