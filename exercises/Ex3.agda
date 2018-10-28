@@ -217,7 +217,9 @@ findLonR (sr s) (x ,- p) | xs , p' , z | ys , s1 , s2 | zs , s1' , s2' = zs , (s
 -- Show that permutation is transitive.
 
 transP : {X : Set}{xs ys zs : List X} -> xs ~ ys -> ys ~ zs -> xs ~ zs
-transP p q = {!!}
+transP [] q = q
+transP (x ,- p) q with findLonR x q
+transP (x ,- p) q | xs , p' , s = insP (sl srs) s (transP p p')
 
 -- HINT: you will need to define some useful operations on splittings to
 -- get this to work.
