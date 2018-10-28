@@ -232,7 +232,8 @@ transP (x ,- p) q | xs , p' , s = insP (sl srs) s (transP p p')
 -- Show that permutation is symmetric.
 
 symP : {X : Set}{xs ys : List X} -> xs ~ ys -> ys ~ xs
-symP p = {!!}
+symP [] = []
+symP (x ,- p) = insP x (sl srs) (symP p)
 
 -- A category where all morphisms are invertible is called a "groupoid".
 
@@ -246,7 +247,9 @@ symP p = {!!}
 permute : {X : Set}{xs ys : List X} -> xs ~ ys ->
           {Q : X -> Set} -> All Q xs -> All Q ys
 
-permute p qs = {!!}
+permute [] qs = <>
+permute (x ,- p) qs with findLonR (sl srs) (x ,- p)
+permute (x ,- p) (q , qs) | xs , p' , s =  (q , <>) >[ x ]< permute p qs
 
 --??--------------------------------------------------------------------------
 
